@@ -1,0 +1,10 @@
+filebeat.inputs:
+- type: filestream
+  enabled: true
+  paths:
+    #- /var/log/*.log
+    - /var/log/pods/*/*/*.log
+
+output.logstash:
+  # The Logstash hosts
+  hosts: ["graylog_vip:5044"]

@@ -1,0 +1,81 @@
+version: '2'
+services:
+  mongodb:
+    image: local_repo_url/docker/mongo:4.2
+    container_name: mongodb
+    volumes:
+      - /data/mongo_data:/data/db
+    ports:
+            - 27017:27017
+  elasticsearch:
+    image: local_repo_url/docker/elasticsearch/elasticsearch:7.17.2
+    container_name: elasticsearch1
+    volumes:
+      - /data/es_data:/usr/share/elasticsearch/data
+    environment:
+      - node.name=elasticsearch1
+      - node.data=true
+      - node.master=true
+      - discovery.seed_hosts=host1,host2,host3
+      - cluster.initial_master_nodes=host1,host2,host3
+      - cluster.name=graylog
+      - bootstrap.memory_lock=true
+      - network.publish_host=host1
+      - http.host=0.0.0.0
+      - network.host=0.0.0.0
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
+    ports:
+      - 9200:9200
+      - 9300:9300
+    extra_hosts:
+            - "elasticsearch1:host1"
+            - "elasticsearch2:host2"
+            - "elasticsearch3:host3"
+  graylog:
+    image: local_repo_url/docker/graylog/graylog:4.2.7
+    container_name: graylog1
+    volumes:
+      - /data/graylog_data:/usr/share/graylog/data
+    environment:
+      # CHANGE ME (must be at least 16 characters)!
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      # Password: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=c97f8c1881ca8dc5573511c43a7dfc63670396a5400e096bd1e82fb55d660c6c
+      - GRAYLOG_HTTP_EXTERNAL_URI=https://graylog.example.com/
+    entrypoint: /usr/bin/tini -- wait-for-it host1:9200 --  /docker-entrypoint.sh
+    links:
+      - mongodb:mongo
+      - elasticsearch
+    restart: always
+    depends_on:
+      - mongodb
+      - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP
+      - 1514:1514
+      # Syslog UDP
+      - 1514:1514/udp
+      # GELF TCP
+      - 12201:12201
+      # GELF UDP
+      - 12201:12201/udp
+      # Beats TCP
+      - 5044:5044
+      - 5045:5045
+      - 5046:5046
+      - 5047:5047
+      - 5048:5048
+      - 5049:5049
+volumes:
+  mongo_data:
+    driver: local
+  es_data:
+    driver: local
+  graylog_data:
+    driver: local
